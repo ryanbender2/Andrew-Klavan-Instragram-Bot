@@ -1,1 +1,2 @@
-run 'env\Scripts\activate'
+run
+env\Scripts\activate
