@@ -13,6 +13,7 @@ class Bot(object):
     def __init__(self, video_path: str, video_title: str, video_desc: str, video_id: str) -> None:
         chrome_options = Options()
         chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
         chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
         self.driver = webdriver.Chrome('chromedriver', options=chrome_options)

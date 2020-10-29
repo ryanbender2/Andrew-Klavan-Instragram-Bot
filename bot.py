@@ -32,6 +32,7 @@ LINK = 'https://www.youtube.com/c/AndrewKlavan/videos'
 
 CHROME_OPTIONS = Options()
 CHROME_OPTIONS.add_argument("--headless")
+CHROME_OPTIONS.add_argument("--no-sandbox")
 CHROME_OPTIONS.add_experimental_option('excludeSwitches', ['enable-logging'])
 
 
