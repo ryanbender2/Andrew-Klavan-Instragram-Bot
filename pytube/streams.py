@@ -238,16 +238,10 @@ class Stream:
         )
 
         if skip_existing and self.exists_at_path(file_path):
-            logger.debug("file %s already exists, skipping", file_path)
             self.on_complete(file_path)
             return file_path
 
         bytes_remaining = self.filesize
-        logger.debug(
-            "downloading (%s total bytes) file to %s",
-            self.filesize,
-            file_path,
-        )
 
         with open(file_path, "wb") as fh:
             for chunk in request.stream(self.url):
@@ -284,9 +278,6 @@ class Stream:
         :rtype: io.BytesIO buffer
         """
         bytes_remaining = self.filesize
-        logger.info(
-            "downloading (%s total bytes) file to buffer", self.filesize,
-        )
 
         for chunk in request.stream(self.url):
             # reduce the (bytes) remainder by the length of the chunk.
@@ -318,7 +309,6 @@ class Stream:
 
         """
         file_handler.write(chunk)
-        logger.debug("download remaining: %s", bytes_remaining)
         if self._monostate.on_progress:
             self._monostate.on_progress(self, chunk, bytes_remaining)
 
@@ -332,10 +322,8 @@ class Stream:
         :rtype: None
 
         """
-        logger.debug("download finished")
         on_complete = self._monostate.on_complete
         if on_complete:
-            logger.debug("calling on_complete callback %s", on_complete)
             on_complete(self, file_path)
 
     def __repr__(self) -> str:

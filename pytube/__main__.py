@@ -30,8 +30,6 @@ from pytube.monostate import Monostate
 from pytube.monostate import OnComplete
 from pytube.monostate import OnProgress
 
-logger = logging.getLogger(__name__)
-
 
 class YouTube:
     """Core developer interface for pytube."""
@@ -113,7 +111,6 @@ class YouTube:
         :rtype: None
 
         """
-        logger.info("init started")
 
         self.vid_info = dict(parse_qsl(self.vid_info_raw))
         if self.age_restricted:
@@ -164,8 +161,6 @@ class YouTube:
         del self.player_config_args["player_response"]
         self.stream_monostate.title = self.title
         self.stream_monostate.duration = self.length
-
-        logger.info("init finished successfully")
 
     def prefetch(self) -> None:
         """Eagerly download all necessary data.

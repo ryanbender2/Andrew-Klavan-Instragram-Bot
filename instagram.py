@@ -1,8 +1,13 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import NoSuchElementException
+import logging
+from datetime import datetime
 from time import sleep
 
+logging.basicConfig(filename='klavan_bot_logs.log', level=logging.DEBUG)
+
+FAILED_UPLOADS = {}
 
 class Bot(object):
     def __init__(self, video_path: str, video_title: str, video_desc: str, video_id: str) -> None:
@@ -15,6 +20,11 @@ class Bot(object):
         self.video_title = video_title
         self.video_desc = video_desc
         self.video_id = video_id
+
+        self.too_many_upload_attempts = False
+
+        # temp success flag
+        self.success = False
 
         self.start_upload()
 
@@ -29,12 +39,12 @@ class Bot(object):
             if at_login:
                 self.do_login()
                 sleep(5)
+            else:
+                raise Exception('Selenium did not go to login page')
             
             at_upload_page = str(self.driver.current_url).find('upload') != -1
             if not at_upload_page:
-                # sleep(10)
-                # retry
-                print('not at upload page')
+                raise Exception('Selenium did not go to upload page')
                 
             
             # upload video
@@ -60,14 +70,40 @@ class Bot(object):
             with open('uploaded_videos.csv', 'a') as uploaded_vids:
                 uploaded_vids.write(self.video_id + '\n')
 
-            print("successfully uploaded video")
-        except:
-            pass
+            # remove from failed uploads if successfully uploaded video
+            if self.video_id in FAILED_UPLOADS.keys():
+                FAILED_UPLOADS.pop(self.video_id)
+
+            self.success = True
+
+            today = datetime.today()
+            date = today.strftime('%m/%d/%Y')
+            time = today.strftime('%I:%M%p')
+            logging.error(f'[{date} {time}] Successfully uploaded video {self.video_title} ({self.video_id})!')
+        except Exception as ex:
+            today = datetime.today()
+            date = today.strftime('%m/%d/%Y')
+            time = today.strftime('%I:%M%p')
+            logging.error(f'[{date} {time}] While uploading video {self.video_title} ({self.video_id}), an error occurred: {str(ex)}')
+
+            if self.video_id in FAILED_UPLOADS.keys():
+                FAILED_UPLOADS[self.video_id] += 1
+            else:
+                FAILED_UPLOADS[self.video_id] = 1
+
+            # check if video has been attempted more than 4 times
+            if FAILED_UPLOADS[self.video_id] == 4:
+                logging.error(f'[{date} {time}] Failed to upload video {self.video_title} ({self.video_id}) 4 times')
+                self.too_many_upload_attempts = True
+
+
+    def failed_4_times(self) -> bool:
+        return self.too_many_upload_attempts
 
 
     def do_login(self) -> None:
         try:
-            with open('C:\MSI\insta_creds.key', 'r') as creds_file:
+            with open('C:\\MSI\\insta_creds.key', 'r') as creds_file:
                 username = self.driver.find_element_by_xpath('//*[@id="loginForm"]/div/div[1]/div/label/input')
                 username.send_keys(creds_file.readline().strip())
 
@@ -83,7 +119,10 @@ class Bot(object):
 
 
         except NoSuchElementException as ex:
-            print('element not found')
+            today = datetime.today()
+            date = today.strftime('%m/%d/%Y')
+            time = today.strftime('%I:%M%p')
+            logging.error(f'[{date} {time}] While uploading video {self.video_title} ({self.video_id}), an error occurred: {str(ex)}')
 
 
     def tearDown(self) -> None:

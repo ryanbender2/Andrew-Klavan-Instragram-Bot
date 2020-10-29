@@ -15,7 +15,6 @@ from urllib import request
 
 from pytube.exceptions import RegexMatchError
 
-logger = logging.getLogger(__name__)
 
 
 def regex_search(pattern: str, string: str, group: int) -> str:
@@ -37,7 +36,6 @@ def regex_search(pattern: str, string: str, group: int) -> str:
     if not results:
         raise RegexMatchError(caller="regex_search", pattern=pattern)
 
-    logger.debug("matched regex search: %s", pattern)
 
     return results.group(group)
 

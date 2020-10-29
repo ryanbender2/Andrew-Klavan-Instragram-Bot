@@ -21,13 +21,16 @@ sudo rm /usr/local/bin/selenium-server-standalone.jar
 # Install dependencies.
 sudo apt-get update
 sudo apt-get install -y unzip openjdk-8-jre-headless xvfb libxi6 libgconf-2-4
-sudo apt-get install python3-pip
+sudo apt-get install -y python3-pip
 sudo python3 -m pip install selenium
 sudo python3 -m pip install AdvancedHTMLParser
 
 # Move linux chrome driver out
 sudo rm ./chromedriver.exe
 sudo mv ./linux_stuff/chromedriver ./
+
+# Create temp videos directory
+sudo mkdir ./temp_video_storage
 
 # Install Chrome.
 sudo curl -sS -o - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add

@@ -27,9 +27,6 @@ from pytube.exceptions import RegexMatchError
 from pytube.helpers import cache
 from pytube.helpers import regex_search
 
-logger = logging.getLogger(__name__)
-
-
 class Cipher:
     def __init__(self, js: str):
         self.transform_plan: List[str] = get_transform_plan(js)
@@ -53,17 +50,6 @@ class Cipher:
         for js_func in self.transform_plan:
             name, argument = self.parse_function(js_func)  # type: ignore
             signature = self.transform_map[name](signature, argument)
-            logger.debug(
-                "applied transform function\n"
-                "output: %s\n"
-                "js_function: %s\n"
-                "argument: %d\n"
-                "function: %s",
-                "".join(signature),
-                name,
-                argument,
-                self.transform_map[name],
-            )
 
         return "".join(signature)
 
@@ -86,7 +72,6 @@ class Cipher:
         ('AJ', 15)
 
         """
-        logger.debug("parsing transform function")
         parse_match = self.js_func_regex.search(js_func)
         if not parse_match:
             raise RegexMatchError(
@@ -119,12 +104,10 @@ def get_initial_function_name(js: str) -> str:
         r"\bc\s*&&\s*[a-zA-Z0-9]+\.set\([^,]+\s*,\s*\([^)]*\)\s*\(\s*(?P<sig>[a-zA-Z0-9$]+)\(",  # noqa: E501
         r"\bc\s*&&\s*[a-zA-Z0-9]+\.set\([^,]+\s*,\s*\([^)]*\)\s*\(\s*(?P<sig>[a-zA-Z0-9$]+)\(",  # noqa: E501
     ]
-    logger.debug("finding initial function name")
     for pattern in function_patterns:
         regex = re.compile(pattern)
         function_match = regex.search(js)
         if function_match:
-            logger.debug("finished regex search, matched: %s", pattern)
             return function_match.group(1)
 
     raise RegexMatchError(
@@ -154,7 +137,6 @@ def get_transform_plan(js: str) -> List[str]:
     """
     name = re.escape(get_initial_function_name(js))
     pattern = r"%s=function\(\w\){[a-z=\.\(\"\)]*;(.*);(?:.+)}" % name
-    logger.debug("getting transform plan")
     return regex_search(pattern, js, group=1).split(";")
 
 
@@ -181,7 +163,6 @@ def get_transform_object(js: str, var: str) -> List[str]:
 
     """
     pattern = r"var %s={(.*?)};" % re.escape(var)
-    logger.debug("getting transform object")
     regex = re.compile(pattern, flags=re.DOTALL)
     transform_match = regex.search(js)
     if not transform_match:

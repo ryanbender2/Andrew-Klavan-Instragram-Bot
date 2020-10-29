@@ -1,4 +1,0 @@
-Steps to installing everything on linux
-
-1) run sudo apt update
-2) run sudo apt install 

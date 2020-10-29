@@ -19,8 +19,6 @@ from pytube.exceptions import LiveStreamError
 from pytube.exceptions import RegexMatchError
 from pytube.helpers import regex_search
 
-logger = logging.getLogger(__name__)
-
 
 def is_age_restricted(watch_html: str) -> bool:
     """Check if content is age restricted.
@@ -165,7 +163,6 @@ def get_ytplayer_js(html: str) -> Any:
         regex = re.compile(pattern)
         function_match = regex.search(html)
         if function_match:
-            logger.debug("finished regex search, matched: %s", pattern)
             yt_player_js = function_match.group(1)
             return yt_player_js
 
@@ -193,12 +190,10 @@ def get_ytplayer_config(html: str) -> Any:
         r";yt\.setConfig\(\{'PLAYER_CONFIG':\s*({.*})}\);",
         r";yt\.setConfig\(\{'PLAYER_CONFIG':\s*({.*})(,'EXPERIMENT_FLAGS'|;)",  # noqa: E501
     ]
-    logger.debug("finding initial function name")
     for pattern in config_patterns:
         regex = re.compile(pattern)
         function_match = regex.search(html)
         if function_match:
-            logger.debug("finished regex search, matched: %s", pattern)
             yt_player_config = function_match.group(1)
             return json.loads(yt_player_config)
 
@@ -241,14 +236,10 @@ def apply_signature(config_args: Dict, fmt: str, js: str) -> None:
             # For certain videos, YouTube will just provide them pre-signed, in
             # which case there's no real magic to download them and we can skip
             # the whole signature descrambling entirely.
-            logger.debug("signature found, skip decipher")
             continue
 
         signature = cipher.get_signature(ciphered_signature=stream["s"])
 
-        logger.debug(
-            "finished descrambling signature for itag=%s", stream["itag"]
-        )
         # 403 forbidden fix
         stream_manifest[i]["url"] = url + "&sig=" + signature
 
@@ -325,4 +316,3 @@ def apply_descrambler(stream_data: Dict, key: str) -> None:
             for i in stream_data[key].split(",")
         ]
 
-    logger.debug("applying descrambler")

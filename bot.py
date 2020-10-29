@@ -1,4 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import datetime
+import logging
+from platform import python_version_tuple
 from pytube import YouTube
 from csv import reader
 from threading import Thread
@@ -10,6 +12,8 @@ import instagram
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
+logging.basicConfig(filename='klavan_bot_logs.log', level=logging.DEBUG)
+
 EMAIL_PASS = open("C:\\MSI\\email_pass.key", 'r').readline()
 EMAIL_SERVER = SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context())
 EMAIL_SERVER.login('ak.insta.contact@gmail.com', EMAIL_PASS)
@@ -20,8 +24,15 @@ CHROME_OPTIONS = Options()
 CHROME_OPTIONS.add_argument("--headless")
 CHROME_OPTIONS.add_experimental_option('excludeSwitches', ['enable-logging'])
 
+FAILED_UPLOADS = {}
+
 
 def email(subject: str, body: str) -> None:
+    today = datetime.today()
+    date = today.strftime('%m/%d/%Y')
+    time = today.strftime('%I:%M%p')
+    logging.info(f'[{date} {time}] Sending an email')
+
     message = f'Subject: {subject}\n\n{body}'
     EMAIL_SERVER.sendmail('ak.insta.contact@gmail.com', 'ryan.bender.general@gmail.com', message)
 
@@ -45,7 +56,7 @@ class VideoHandler(Thread):
         self._video_title = video_title
 
         date = datetime.today().strftime('%m-%d-%Y')
-        self._generated_filename = f'temp{randint(10000, 99999)}_{date}'
+        self._generated_filename = f'temp{randint(1000, 99999)}_{self._video_id}_{date}'
 
 
     def download_video(self, new_filename: str) -> None:
@@ -57,12 +68,23 @@ class VideoHandler(Thread):
     
 
     def upload_to_instagram(self) -> None:
-        instagram.Bot(self._video_path, self._video_title, self._video_desc, self._video_id)
-
+        print('starting insta bot!')
+        insta = instagram.Bot(self._video_path, self._video_title, self._video_desc, self._video_id)
+        if insta.failed_4_times():
+            subject = 'Klavan Bot | VIDEO UPLOAD ERROR'
+            message = f'The video {self._video_title} ({self._video_id}) has been attempted to' + \
+                    'be uploaded 4 times.\n\nLove,\nBot'
+            email(subject, message)
+        
+        # temp success email
+        if insta.success:
+            sub = 'Andrew Bot | YAY'
+            mess = f'We did it!! The video {self._video_title} was uploaded!\n\nLove,\nBot'
+            email(sub,  mess)
 
     def run(self) -> None:
         self.download_video(self._generated_filename)
-        self.upload_to_instagram()
+        self.upload_to_instagram()        
 
 
 def do_search(driver: webdriver.Chrome) -> list:
@@ -92,15 +114,19 @@ def loop() -> None:
                 new_videos_to_do.append(item)
 
         if new_videos:
-            print('new videos to upload!')
-
             for video in new_videos_to_do:
+                today = datetime.today()
+                date = today.strftime('%m/%d/%Y')
+                time = today.strftime('%I:%M%p')
+                logging.info(f'[{date} {time}] New video: {video[0]} ({video[1]})')
+
                 new_video = VideoHandler(video[0], video[1])
                 new_video.start()
 
-                sleep(5)
+                sleep(10)
+
+            sleep(600) # 600 -> 10 minutes
         else:
-            print('no new videos!')
             sleep(600) # 600 -> 10 minutes
 
         driver.close()
@@ -109,23 +135,21 @@ def loop() -> None:
 def main():
     today = datetime.today()
     date = today.strftime('%m/%d/%Y')
-    time = today.strftime('%I:%M %p')
+    time = today.strftime('%I:%M%p')
     subject = 'Klavan Bot | INFO'
     mess = f'Dear Maker,\n\nOn {date} at {time}, I was started and have begun running my rounds.\n\nLove,\nBot'
     # email(subject, mess)
-    print(subject)
+    logging.info(f'[{date} {time}] Server starting...')
 
     while (True):
         try:
             loop()
         except Exception as ex:
-            print("something failed, server restarting..." + str(ex))
+            logging.error(f'[{date} {time}] Server failed: {str(ex)}server restarting...')
             sleep(5)
             
 
 def testing():
-    # some = _youtube.search(channel_id='UCyhEZKz-LOwgktptEOh6_Iw', published_after=one_day_ago, order_by='date')
-    # print(some)
     pass
 
 if __name__ == "__main__":
