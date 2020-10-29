@@ -43,7 +43,7 @@ chrome_options.add_argument("--headless")
 chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
 
-driver = webdriver.Chrome('chromedriver.exe', options=chrome_options)
+driver = webdriver.Chrome('chromedriver', options=chrome_options)
 driver.get(link)
 
 uploaded_videos = [i[0] for i in reader(open('uploaded_videos.csv', 'r'))]
