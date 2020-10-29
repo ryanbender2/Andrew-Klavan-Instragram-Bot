@@ -37,9 +37,9 @@ CHROME_OPTIONS.add_experimental_option('excludeSwitches', ['enable-logging'])
 
 
 def email(subject: str, body: str) -> None:
-    today = datetime.today()
+    today = datetime.today() - timedelta(hours=4)
     date = today.strftime('%m/%d/%Y')
-    time = today.strftime('%I:%M%p') - timedelta(hours=4)
+    time = today.strftime('%I:%M%p')
     logging.info(f'[{date} {time}] Sending an email -- {subject}')
 
     message = f'Subject: {subject}\n\n{body}'
@@ -110,9 +110,9 @@ def loop() -> None:
             driver = webdriver.Chrome('chromedriver', options=CHROME_OPTIONS)
             driver.get(LINK)
         except WebDriverException as ex:
-            today = datetime.today()
+            today = datetime.today() - timedelta(hours=4)
             date = today.strftime('%m/%d/%Y')
-            time = today.strftime('%I:%M%p') - timedelta(hours=4)
+            time = today.strftime('%I:%M%p')
             logging.error(f'[{date} {time}] Web driver could not connect to the internet, trying again in 10 minutes\n{str(ex)}')
             sleep(600)
             continue
@@ -130,9 +130,9 @@ def loop() -> None:
 
         if new_videos:
             for video in new_videos_to_do:
-                today = datetime.today()
+                today = datetime.today() - timedelta(hours=4)
                 date = today.strftime('%m/%d/%Y')
-                time = today.strftime('%I:%M%p') - timedelta(hours=4)
+                time = today.strftime('%I:%M%p')
                 logging.info(f'[{date} {time}] New video: {video[0]} ({video[1]})')
 
                 new_video = VideoHandler(video[0], video[1])
@@ -148,9 +148,9 @@ def loop() -> None:
 
 
 def main():
-    today = datetime.today()
+    today = datetime.today() - timedelta(hours=4)
     date = today.strftime('%m/%d/%Y')
-    time = today.strftime('%I:%M%p') - timedelta(hours=4)
+    time = today.strftime('%I:%M%p')
     subject = 'Klavan Bot | Server Starting'
     mess = f'Dear Maker,\n\nOn {date} at {time}, I was started and have begun running my rounds.\n\nLove,\nBot'
     email(subject, mess)

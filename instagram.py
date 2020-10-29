@@ -77,14 +77,14 @@ class Bot(object):
 
             self.success = True
 
-            today = datetime.today()
+            today = datetime.today() - timedelta(hours=4)
             date = today.strftime('%m/%d/%Y')
-            time = today.strftime('%I:%M%p') - timedelta(hours=4)
+            time = today.strftime('%I:%M%p')
             logging.info(f"[{date} {time}] Successfully uploaded video '{self.video_title}' ({self.video_id})!")
         except Exception as ex:
-            today = datetime.today()
+            today = datetime.today() - timedelta(hours=4)
             date = today.strftime('%m/%d/%Y')
-            time = today.strftime('%I:%M%p') - timedelta(hours=4)
+            time = today.strftime('%I:%M%p')
             logging.error(f'[{date} {time}] While uploading video {self.video_title} ({self.video_id}), an error occurred: {str(ex)}')
 
             if self.video_id in FAILED_UPLOADS.keys():
@@ -118,9 +118,9 @@ class Bot(object):
                 not_now = self.driver.find_element_by_xpath('//*[@id="react-root"]/section/main/div/div/div/div/button')
                 not_now.click()
         except NoSuchElementException as ex:
-            today = datetime.today()
+            today = datetime.today() - timedelta(hours=4)
             date = today.strftime('%m/%d/%Y')
-            time = today.strftime('%I:%M%p') - timedelta(hours=4)
+            time = today.strftime('%I:%M%p')
             logging.error(f'[{date} {time}] While uploading video {self.video_title} ({self.video_id}), an error occurred: {str(ex)}')
 
 
