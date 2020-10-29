@@ -12,12 +12,12 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import WebDriverException
 
-logging.basicConfig(filename='klavan_bot_logs.log', level=logging.DEBUG)
+logging.basicConfig(filename='/home/ryan/fileshare/klavan_bot_logs.log', level=logging.DEBUG)
 
 setup_email = False
 while not setup_email:
     try:
-        EMAIL_PASS = open("C:\\MSI\\email_pass.key", 'r').readline()
+        EMAIL_PASS = open("/passcodes/email_pass.key", 'r').readline()
         EMAIL_SERVER = SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context())
         EMAIL_SERVER.login('ak.insta.contact@gmail.com', EMAIL_PASS)
         setup_email = True
@@ -33,8 +33,6 @@ LINK = 'https://www.youtube.com/c/AndrewKlavan/videos'
 CHROME_OPTIONS = Options()
 CHROME_OPTIONS.add_argument("--headless")
 CHROME_OPTIONS.add_experimental_option('excludeSwitches', ['enable-logging'])
-
-FAILED_UPLOADS = {}
 
 
 def email(subject: str, body: str) -> None:
@@ -109,9 +107,7 @@ def loop() -> None:
 
     while (True):
         try:
-            print('cut the internet')
-            sleep(5)
-            driver = webdriver.Chrome('chromedriver.exe', options=CHROME_OPTIONS)
+            driver = webdriver.Chrome('chromedriver', options=CHROME_OPTIONS)
             driver.get(LINK)
         except WebDriverException as ex:
             today = datetime.today()
@@ -157,7 +153,7 @@ def main():
     time = today.strftime('%I:%M%p')
     subject = 'Klavan Bot | Server Starting'
     mess = f'Dear Maker,\n\nOn {date} at {time}, I was started and have begun running my rounds.\n\nLove,\nBot'
-    # email(subject, mess)
+    email(subject, mess)
     logging.info(f'[{date} {time}] Server starting...')
 
     while (True):

@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 from time import sleep
 
-logging.basicConfig(filename='klavan_bot_logs.log', level=logging.DEBUG)
+logging.basicConfig(filename='/home/ryan/fileshare/klavan_bot_logs.log', level=logging.DEBUG)
 
 FAILED_UPLOADS = {}
 
@@ -15,7 +15,7 @@ class Bot(object):
         chrome_options.add_argument("--headless")
         chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
-        self.driver = webdriver.Chrome('chromedriver.exe', options=chrome_options)
+        self.driver = webdriver.Chrome('chromedriver', options=chrome_options)
         self.video_path = video_path
         self.video_title = video_title
         self.video_desc = video_desc
@@ -103,7 +103,7 @@ class Bot(object):
 
     def do_login(self) -> None:
         try:
-            with open('C:\\MSI\\insta_creds.key', 'r') as creds_file:
+            with open('/passcodes/insta_creds.key', 'r') as creds_file:
                 username = self.driver.find_element_by_xpath('//*[@id="loginForm"]/div/div[1]/div/label/input')
                 username.send_keys(creds_file.readline().strip())
 
