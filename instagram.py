@@ -2,7 +2,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import NoSuchElementException
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from time import sleep
 
 logging.basicConfig(filename='/home/ryan/fileshare/klavan_bot_logs.log', level=logging.DEBUG)
@@ -79,12 +79,12 @@ class Bot(object):
 
             today = datetime.today()
             date = today.strftime('%m/%d/%Y')
-            time = today.strftime('%I:%M%p')
+            time = today.strftime('%I:%M%p') - timedelta(hours=4)
             logging.info(f"[{date} {time}] Successfully uploaded video '{self.video_title}' ({self.video_id})!")
         except Exception as ex:
             today = datetime.today()
             date = today.strftime('%m/%d/%Y')
-            time = today.strftime('%I:%M%p')
+            time = today.strftime('%I:%M%p') - timedelta(hours=4)
             logging.error(f'[{date} {time}] While uploading video {self.video_title} ({self.video_id}), an error occurred: {str(ex)}')
 
             if self.video_id in FAILED_UPLOADS.keys():
@@ -120,7 +120,7 @@ class Bot(object):
         except NoSuchElementException as ex:
             today = datetime.today()
             date = today.strftime('%m/%d/%Y')
-            time = today.strftime('%I:%M%p')
+            time = today.strftime('%I:%M%p') - timedelta(hours=4)
             logging.error(f'[{date} {time}] While uploading video {self.video_title} ({self.video_id}), an error occurred: {str(ex)}')
 
 

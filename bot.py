@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from pytube import YouTube
 from csv import reader
@@ -39,7 +39,7 @@ CHROME_OPTIONS.add_experimental_option('excludeSwitches', ['enable-logging'])
 def email(subject: str, body: str) -> None:
     today = datetime.today()
     date = today.strftime('%m/%d/%Y')
-    time = today.strftime('%I:%M%p')
+    time = today.strftime('%I:%M%p') - timedelta(hours=4)
     logging.info(f'[{date} {time}] Sending an email -- {subject}')
 
     message = f'Subject: {subject}\n\n{body}'
@@ -112,7 +112,7 @@ def loop() -> None:
         except WebDriverException as ex:
             today = datetime.today()
             date = today.strftime('%m/%d/%Y')
-            time = today.strftime('%I:%M%p')
+            time = today.strftime('%I:%M%p') - timedelta(hours=4)
             logging.error(f'[{date} {time}] Web driver could not connect to the internet, trying again in 10 minutes\n{str(ex)}')
             sleep(600)
             continue
@@ -132,7 +132,7 @@ def loop() -> None:
             for video in new_videos_to_do:
                 today = datetime.today()
                 date = today.strftime('%m/%d/%Y')
-                time = today.strftime('%I:%M%p')
+                time = today.strftime('%I:%M%p') - timedelta(hours=4)
                 logging.info(f'[{date} {time}] New video: {video[0]} ({video[1]})')
 
                 new_video = VideoHandler(video[0], video[1])
@@ -150,7 +150,7 @@ def loop() -> None:
 def main():
     today = datetime.today()
     date = today.strftime('%m/%d/%Y')
-    time = today.strftime('%I:%M%p')
+    time = today.strftime('%I:%M%p') - timedelta(hours=4)
     subject = 'Klavan Bot | Server Starting'
     mess = f'Dear Maker,\n\nOn {date} at {time}, I was started and have begun running my rounds.\n\nLove,\nBot'
     email(subject, mess)
