@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 from time import sleep
 
-logging.basicConfig(filename='klavan_bot_logs.log', level=logging.DEBUG)
+logging.basicConfig(filename='/home/ryan/fileshare/klavan_bot_logs.log', level=logging.DEBUG)
 
 FAILED_UPLOADS = {}
 
