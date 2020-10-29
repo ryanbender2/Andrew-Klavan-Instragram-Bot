@@ -1,6 +1,5 @@
 from datetime import datetime
 import logging
-from platform import python_version_tuple
 from pytube import YouTube
 from csv import reader
 from threading import Thread
@@ -11,12 +10,23 @@ from smtplib import SMTP_SSL
 import instagram
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import WebDriverException
 
 logging.basicConfig(filename='klavan_bot_logs.log', level=logging.DEBUG)
 
-EMAIL_PASS = open("C:\\MSI\\email_pass.key", 'r').readline()
-EMAIL_SERVER = SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context())
-EMAIL_SERVER.login('ak.insta.contact@gmail.com', EMAIL_PASS)
+setup_email = False
+while not setup_email:
+    try:
+        EMAIL_PASS = open("C:\\MSI\\email_pass.key", 'r').readline()
+        EMAIL_SERVER = SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context())
+        EMAIL_SERVER.login('ak.insta.contact@gmail.com', EMAIL_PASS)
+        setup_email = True
+    except:
+        today = datetime.today()
+        date = today.strftime('%m/%d/%Y')
+        time = today.strftime('%I:%M%p')
+        logging.info(f'[{date} {time}] Failed at setting up server...probably no internet connection, trying again in 10 minutes')
+        sleep(600)
 
 LINK = 'https://www.youtube.com/c/AndrewKlavan/videos'
 
@@ -31,7 +41,7 @@ def email(subject: str, body: str) -> None:
     today = datetime.today()
     date = today.strftime('%m/%d/%Y')
     time = today.strftime('%I:%M%p')
-    logging.info(f'[{date} {time}] Sending an email')
+    logging.info(f'[{date} {time}] Sending an email -- {subject}')
 
     message = f'Subject: {subject}\n\n{body}'
     EMAIL_SERVER.sendmail('ak.insta.contact@gmail.com', 'ryan.bender.general@gmail.com', message)
@@ -68,18 +78,17 @@ class VideoHandler(Thread):
     
 
     def upload_to_instagram(self) -> None:
-        print('starting insta bot!')
         insta = instagram.Bot(self._video_path, self._video_title, self._video_desc, self._video_id)
         if insta.failed_4_times():
             subject = 'Klavan Bot | VIDEO UPLOAD ERROR'
-            message = f'The video {self._video_title} ({self._video_id}) has been attempted to' + \
-                    'be uploaded 4 times.\n\nLove,\nBot'
+            message = f"The video '{self._video_title}' ({self._video_id}) has been attempted to" + \
+                    " be uploaded 4 times.\n\nLove,\nBot"
             email(subject, message)
         
         # temp success email
         if insta.success:
             sub = 'Andrew Bot | YAY'
-            mess = f'We did it!! The video {self._video_title} was uploaded!\n\nLove,\nBot'
+            mess = f"We did it!! The video '{self._video_title}' was uploaded!\n\nLove,\nBot"
             email(sub,  mess)
 
     def run(self) -> None:
@@ -99,8 +108,18 @@ def loop() -> None:
     global LINK
 
     while (True):
-        driver = webdriver.Chrome('chromedriver.exe', options=CHROME_OPTIONS)
-        driver.get(LINK)
+        try:
+            print('cut the internet')
+            sleep(5)
+            driver = webdriver.Chrome('chromedriver.exe', options=CHROME_OPTIONS)
+            driver.get(LINK)
+        except WebDriverException as ex:
+            today = datetime.today()
+            date = today.strftime('%m/%d/%Y')
+            time = today.strftime('%I:%M%p')
+            logging.error(f'[{date} {time}] Web driver could not connect to the internet, trying again in 10 minutes\n{str(ex)}')
+            sleep(600)
+            continue
 
         uploaded_videos = [i[0] for i in reader(open('uploaded_videos.csv', 'r'))]
         video_search = do_search(driver=driver)
@@ -136,7 +155,7 @@ def main():
     today = datetime.today()
     date = today.strftime('%m/%d/%Y')
     time = today.strftime('%I:%M%p')
-    subject = 'Klavan Bot | INFO'
+    subject = 'Klavan Bot | Server Starting'
     mess = f'Dear Maker,\n\nOn {date} at {time}, I was started and have begun running my rounds.\n\nLove,\nBot'
     # email(subject, mess)
     logging.info(f'[{date} {time}] Server starting...')
@@ -146,12 +165,8 @@ def main():
             loop()
         except Exception as ex:
             logging.error(f'[{date} {time}] Server failed: {str(ex)}server restarting...')
-            sleep(5)
-            
+            sleep(300)
 
-def testing():
-    pass
 
 if __name__ == "__main__":
     main()
-    # testing()

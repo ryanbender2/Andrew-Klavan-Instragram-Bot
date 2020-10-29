@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import WebDriverException
 from time import sleep
 from csv import reader
 import AdvancedHTMLParser
@@ -43,8 +44,19 @@ chrome_options.add_argument("--headless")
 chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
 
-driver = webdriver.Chrome('chromedriver.exe', options=chrome_options)
-driver.get(link)
+
+while (True):
+    try:
+        driver = webdriver.Chrome('chromedriver.exe', options=chrome_options)
+        driver.get(link)
+        print('success')
+        sleep(1)
+    except WebDriverException as ex:
+        print("failed")
+        sleep(1)
+        continue
+    
+    print('hello there ' + str(driver.get_window_size()))
 
 uploaded_videos = [i[0] for i in reader(open('uploaded_videos.csv', 'r'))]
 video_search = do_search(driver=driver)

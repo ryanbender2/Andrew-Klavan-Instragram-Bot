@@ -12,7 +12,7 @@ FAILED_UPLOADS = {}
 class Bot(object):
     def __init__(self, video_path: str, video_title: str, video_desc: str, video_id: str) -> None:
         chrome_options = Options()
-        # chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--headless")
         chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
         self.driver = webdriver.Chrome('chromedriver.exe', options=chrome_options)
@@ -33,12 +33,12 @@ class Bot(object):
         try:
             self.driver.get('https://www.instagram.com/tv/upload')
             
-            sleep(3)
+            sleep(6)
 
             at_login = str(self.driver.current_url).find('login') != -1
             if at_login:
                 self.do_login()
-                sleep(5)
+                sleep(10)
             else:
                 raise Exception('Selenium did not go to login page')
             
@@ -79,7 +79,7 @@ class Bot(object):
             today = datetime.today()
             date = today.strftime('%m/%d/%Y')
             time = today.strftime('%I:%M%p')
-            logging.error(f'[{date} {time}] Successfully uploaded video {self.video_title} ({self.video_id})!')
+            logging.info(f"[{date} {time}] Successfully uploaded video '{self.video_title}' ({self.video_id})!")
         except Exception as ex:
             today = datetime.today()
             date = today.strftime('%m/%d/%Y')
@@ -112,12 +112,10 @@ class Bot(object):
 
                 password.submit()
 
-                sleep(8)
+                sleep(16)
 
                 not_now = self.driver.find_element_by_xpath('//*[@id="react-root"]/section/main/div/div/div/div/button')
                 not_now.click()
-
-
         except NoSuchElementException as ex:
             today = datetime.today()
             date = today.strftime('%m/%d/%Y')
