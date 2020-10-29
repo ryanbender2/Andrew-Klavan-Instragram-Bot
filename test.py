@@ -43,20 +43,12 @@ chrome_options = Options()
 chrome_options.add_argument("--headless")
 chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
+# /html/body/ytd-app/div/ytd-page-manager/ytd-browse/ytd-two-column-browse-results-renderer/div[1]/ytd-section-list-renderer/div[2]/ytd-item-section-renderer[1]/div[3]/ytd-shelf-renderer/div[1]/div[2]/yt-horizontal-list-renderer/div[2]/div/ytd-grid-video-renderer[1]/div[1]/ytd-thumbnail/a/div[1]/ytd-thumbnail-overlay-time-status-renderer
+# overlay-style="LIVE"
 
 
-while (True):
-    try:
-        driver = webdriver.Chrome('chromedriver.exe', options=chrome_options)
-        driver.get(link)
-        print('success')
-        sleep(1)
-    except WebDriverException as ex:
-        print("failed")
-        sleep(1)
-        continue
-    
-    print('hello there ' + str(driver.get_window_size()))
+driver = webdriver.Chrome('chromedriver.exe', options=chrome_options)
+driver.get(link)
 
 uploaded_videos = [i[0] for i in reader(open('uploaded_videos.csv', 'r'))]
 video_search = do_search(driver=driver)

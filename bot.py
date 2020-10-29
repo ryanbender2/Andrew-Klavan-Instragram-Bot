@@ -70,8 +70,7 @@ class VideoHandler(Thread):
 
     def download_video(self, new_filename: str) -> None:
         yt = YouTube('https://www.youtube.com/watch?v=' + self._video_id)
-        filepath = yt.streams.first().download('C:\\Users\\ryanb\\OneDrive\\Documents\\' +
-                'GitHub\\Andrew-Klavan-Instragram-Bot\\temp_video_storage\\', new_filename)
+        filepath = yt.streams.first().download('/Andrew-Klavan-Instragram-Bot/temp_video_storage/', new_filename)
         self._video_path = filepath
         self._video_desc = yt.description
     
