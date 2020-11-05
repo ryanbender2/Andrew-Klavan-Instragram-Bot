@@ -17,19 +17,8 @@ logging.basicConfig(filename='/home/ryan/fileshare/klavan_bot_logs.log',
                     datefmt='%m/%d/%Y %I:%M %p',
                     format='[%(asctime)s %(filename)s %(funcName)s():%(lineno)s] %(levelname)s: %(message)s')
 
-
-setup_email = False
-while not setup_email:
-    try:
-        EMAIL_PASS = open("/passcodes/email_pass.key", 'r').readline()
-        EMAIL_SERVER = SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context())
-        EMAIL_SERVER.login('ak.insta.contact@gmail.com', EMAIL_PASS)
-        setup_email = True
-    except:
-        logging.exception(f'Failed at setting up server...probably no internet connection, trying again in 10 minutes')
-        sleep(600)
-
 LINK = 'https://www.youtube.com/c/AndrewKlavan/videos'
+EMAIL_PASS = open("/passcodes/email_pass.key", 'r').readline()
 
 CHROME_OPTIONS = Options()
 CHROME_OPTIONS.add_argument("--headless")
@@ -38,10 +27,17 @@ CHROME_OPTIONS.add_experimental_option('excludeSwitches', ['enable-logging'])
 
 
 def email(subject: str, body: str) -> None:
-    logging.info(f'Sending an email -- {subject}')
+    global EMAIL_PASS
+    try:
+        email_server = SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context())
+        email_server.login('ak.insta.contact@gmail.com', EMAIL_PASS)
 
-    message = f'Subject: {subject}\n\n{body}'
-    EMAIL_SERVER.sendmail('ak.insta.contact@gmail.com', 'ryan.bender.general@gmail.com', message)
+        logging.info(f'Sending an email -- {subject}')
+
+        message = f'Subject: {subject}\n\n{body}'
+        email_server.sendmail('ak.insta.contact@gmail.com', 'ryan.bender.general@gmail.com', message)
+    except Exception as ex:
+        logging.exception(f'Email failed to send: {body}\n{str(ex)}')
 
 
 class VideoHandler(Thread):
@@ -74,6 +70,7 @@ class VideoHandler(Thread):
         filepath = yt.streams.first().download('/Andrew-Klavan-Instragram-Bot/temp_video_storage/', new_filename)
         self._video_path = filepath
         self._video_desc = yt.description
+
     
 
     def upload_to_instagram(self) -> None:
@@ -94,9 +91,12 @@ class VideoHandler(Thread):
             email(sub,  mess)
 
     def run(self) -> None:
-        self.download_video(self._generated_filename)
-        self.upload_to_instagram()        
-
+        try:
+            self.download_video(self._generated_filename)
+            self.upload_to_instagram()
+        except KeyError as ex:
+            logging.exception(f"For video {self._video_title}, downloading failed: {str(ex)}\n'{self._video_title}' will not upload")
+            
 
 def do_search(driver: webdriver.Chrome) -> list:
     videos = []
