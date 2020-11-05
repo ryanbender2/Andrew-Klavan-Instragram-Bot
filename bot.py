@@ -12,7 +12,11 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import WebDriverException
 
-logging.basicConfig(filename='/home/ryan/fileshare/klavan_bot_logs.log', level=logging.DEBUG)
+logging.basicConfig(filename='/home/ryan/fileshare/klavan_bot_logs.log',
+                    level=logging.INFO,
+                    datefmt='%m/%d/%Y %I:%M %p',
+                    format='[%(asctime)s %(filename)s %(funcName)s():%(lineno)s] %(levelname)s: %(message)s')
+
 
 setup_email = False
 while not setup_email:
@@ -22,10 +26,7 @@ while not setup_email:
         EMAIL_SERVER.login('ak.insta.contact@gmail.com', EMAIL_PASS)
         setup_email = True
     except:
-        today = datetime.today()
-        date = today.strftime('%m/%d/%Y')
-        time = today.strftime('%I:%M%p')
-        logging.info(f'[{date} {time}] Failed at setting up server...probably no internet connection, trying again in 10 minutes')
+        logging.exception(f'Failed at setting up server...probably no internet connection, trying again in 10 minutes')
         sleep(600)
 
 LINK = 'https://www.youtube.com/c/AndrewKlavan/videos'
@@ -37,10 +38,7 @@ CHROME_OPTIONS.add_experimental_option('excludeSwitches', ['enable-logging'])
 
 
 def email(subject: str, body: str) -> None:
-    today = datetime.today() - timedelta(hours=4)
-    date = today.strftime('%m/%d/%Y')
-    time = today.strftime('%I:%M%p')
-    logging.info(f'[{date} {time}] Sending an email -- {subject}')
+    logging.info(f'Sending an email -- {subject}')
 
     message = f'Subject: {subject}\n\n{body}'
     EMAIL_SERVER.sendmail('ak.insta.contact@gmail.com', 'ryan.bender.general@gmail.com', message)
@@ -61,6 +59,8 @@ class VideoHandler(Thread):
     def __init__(self, video_title:str, video_id: str) -> None:
         super().__init__()
 
+        logging.info(f'Starting on new video {video_title}')
+
         self._video_id = video_id
         self._video_title = video_title
 
@@ -69,6 +69,7 @@ class VideoHandler(Thread):
 
 
     def download_video(self, new_filename: str) -> None:
+        logging.info(f'Downloading video from https://www.youtube.com/watch?v={self._video_id} to {new_filename}')
         yt = YouTube('https://www.youtube.com/watch?v=' + self._video_id)
         filepath = yt.streams.first().download('/Andrew-Klavan-Instragram-Bot/temp_video_storage/', new_filename)
         self._video_path = filepath
@@ -76,8 +77,10 @@ class VideoHandler(Thread):
     
 
     def upload_to_instagram(self) -> None:
+        logging.info(f'Passing video ({self._video_title}) to instagram bot')
         insta = instagram.Bot(self._video_path, self._video_title, self._video_desc, self._video_id)
         if insta.failed_4_times():
+            logging.error(f'Critical error: attepted to upload video {self._video_title} 4 times and failed')
             subject = 'Klavan Bot | VIDEO UPLOAD ERROR'
             message = f"The video '{self._video_title}' ({self._video_id}) has been attempted to" + \
                     " be uploaded 4 times.\n\nLove,\nBot"
@@ -85,6 +88,7 @@ class VideoHandler(Thread):
         
         # temp success email
         if insta.success:
+            logging.info(f'Successfully upload {self._video_title}')
             sub = 'Andrew Bot | YAY'
             mess = f"We did it!! The video '{self._video_title}' was uploaded!\n\nLove,\nBot"
             email(sub,  mess)
@@ -110,10 +114,7 @@ def loop() -> None:
             driver = webdriver.Chrome('chromedriver', options=CHROME_OPTIONS)
             driver.get(LINK)
         except WebDriverException as ex:
-            today = datetime.today() - timedelta(hours=4)
-            date = today.strftime('%m/%d/%Y')
-            time = today.strftime('%I:%M%p')
-            logging.error(f'[{date} {time}] Web driver could not connect to the internet, trying again in 10 minutes\n{str(ex)}')
+            logging.exception(f'Web driver could not connect to the internet, trying again in 10 minutes\n{str(ex)}')
             sleep(600)
             continue
 
@@ -130,10 +131,7 @@ def loop() -> None:
 
         if new_videos:
             for video in new_videos_to_do:
-                today = datetime.today() - timedelta(hours=4)
-                date = today.strftime('%m/%d/%Y')
-                time = today.strftime('%I:%M%p')
-                logging.info(f'[{date} {time}] New video: {video[0]} ({video[1]})')
+                logging.info(f'New video: {video[0]} ({video[1]})')
 
                 new_video = VideoHandler(video[0], video[1])
                 new_video.start()
@@ -154,13 +152,13 @@ def main():
     subject = 'Klavan Bot | Server Starting'
     mess = f'Dear Maker,\n\nOn {date} at {time}, I was started and have begun running my rounds.\n\nLove,\nBot'
     email(subject, mess)
-    logging.info(f'[{date} {time}] Server starting...')
+    logging.info(f'Server starting...')
 
     while (True):
         try:
             loop()
         except Exception as ex:
-            logging.error(f'[{date} {time}] Server failed: {str(ex)}server restarting...')
+            logging.exception(f'Server failed: {str(ex)}server restarting...')
             sleep(300)
 
 

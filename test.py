@@ -1,36 +1,24 @@
-import requests, json
-from datetime import datetime, timedelta, timezone
-
+import logging
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.common.exceptions import NoSuchElementException
-from selenium.common.exceptions import WebDriverException
-from time import sleep
-from csv import reader
-import AdvancedHTMLParser
+logging.basicConfig(filename='.\\logs.log', level=logging.INFO, datefmt='%m/%d/%Y %I:%M %p', format='[%(asctime)s %(filename)s %(funcName)s():%(lineno)s] %(levelname)s: %(message)s')
 
-# yt_key = None
-# with open("C:\\MSI\\bot_key.key", 'r') as key_file:
-#     yt_key = key_file.readline()
+class whoa:
+    def __init__(self) -> None:
+        logging.info(f'setup {__class__}')
+    
+    def go(self):
+        logging.info(f'setup {__class__}')
 
-# time = datetime.now(timezone.utc).astimezone() - timedelta(hours=40)
-
-# parameters = {
-#     'key': '',
-#     'part': 'snippet',
-#     'channelId': 'UCyhEZKz-LOwgktptEOh6_Iw',
-#     'maxResults': '5',
-#     'order': 'date',
-#     'publishedAfter': time.isoformat()
-# }
-# resp = requests.get('https://www.googleapis.com/youtube/v3/search', params=parameters)
-
-# with open('testing.json', 'r') as file:
-#     parsed = json.loads(''.join(file.readlines()))
-
-
-#     print(json.dumps(parsed, indent=4, sort_keys=True))
-
-today = datetime.today() - timedelta(hours=4)
-time = today.strftime('%I:%M%p')
-print(time)
+f = whoa()
+f.go()
+# Get the previous frame in the stack, otherwise it would
+# be this function!!!
+# func = inspect.currentframe().f_back.f_code
+# # Dump the message + the name of this function to the log.
+# logging.info("%s: %s in %s:%i" % (
+#     "test message", 
+#     func.co_name, 
+#     func.co_filename, 
+#     func.co_firstlineno
+# ))
