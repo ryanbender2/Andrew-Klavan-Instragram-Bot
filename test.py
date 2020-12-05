@@ -1,24 +1,32 @@
-import logging
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-logging.basicConfig(filename='.\\logs.log', level=logging.INFO, datefmt='%m/%d/%Y %I:%M %p', format='[%(asctime)s %(filename)s %(funcName)s():%(lineno)s] %(levelname)s: %(message)s')
+from selenium.webdriver.remote.webelement import WebElement
 
-class whoa:
-    def __init__(self) -> None:
-        logging.info(f'setup {__class__}')
-    
-    def go(self):
-        logging.info(f'setup {__class__}')
+LINK = 'https://www.youtube.com/c/AndrewKlavan/videos'
 
-f = whoa()
-f.go()
-# Get the previous frame in the stack, otherwise it would
-# be this function!!!
-# func = inspect.currentframe().f_back.f_code
-# # Dump the message + the name of this function to the log.
-# logging.info("%s: %s in %s:%i" % (
-#     "test message", 
-#     func.co_name, 
-#     func.co_filename, 
-#     func.co_firstlineno
-# ))
+CHROME_OPTIONS = Options()
+CHROME_OPTIONS.add_argument("--headless")
+CHROME_OPTIONS.add_argument("--no-sandbox")
+CHROME_OPTIONS.add_experimental_option('excludeSwitches', ['enable-logging'])
+
+driver = webdriver.Chrome('chromedriver.exe', options=CHROME_OPTIONS)
+driver.get(LINK)
+
+v_info = driver.find_elements_by_id('video-title')[:3]
+video_lenghts = [i for i in driver.find_elements_by_tag_name('span') if str(i.get_attribute('class')) == 'style-scope ytd-thumbnail-overlay-time-status-renderer'][:3]
+videos = [(v_info[i].text, str(v_info[i].get_attribute('href')).split('=')[1], int(video_lenghts[i].text.split(':')[0])) for i in range(3)]
+# for ele in :
+#     videos.append([ele.text, str(ele.get_attribute('href')).split('=')[1]])
+
+
+# for i in range(3):
+#     videos[i].append(int(video_lenghts[i].text.split(':')[0]))
+
+print(videos)
+
+# for ele in driver.find_elements_by_class_name('style-scope ytd-thumbnail-overlay-time-status-renderer'):
+#     # ele = WebElement(ele)
+#     print(ele.tag_name)
+
+# style-scope ytd-thumbnail-overlay-time-status-renderer
+# print(videos)

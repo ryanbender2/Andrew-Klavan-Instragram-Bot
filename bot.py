@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 from pytube import YouTube
 from csv import reader
@@ -71,7 +71,6 @@ class VideoHandler(Thread):
         self._video_path = filepath
         self._video_desc = yt.description
 
-    
 
     def upload_to_instagram(self) -> None:
         logging.info(f'Passing video ({self._video_title}) to instagram bot')
@@ -82,13 +81,7 @@ class VideoHandler(Thread):
             message = f"The video '{self._video_title}' ({self._video_id}) has been attempted to" + \
                     " be uploaded 4 times.\n\nLove,\nBot"
             email(subject, message)
-        
-        # temp success email
-        if insta.success:
-            logging.info(f'Successfully upload {self._video_title}')
-            sub = 'Andrew Bot | YAY'
-            mess = f"We did it!! The video '{self._video_title}' was uploaded!\n\nLove,\nBot"
-            email(sub,  mess)
+
 
     def run(self) -> None:
         try:
@@ -96,18 +89,29 @@ class VideoHandler(Thread):
             self.upload_to_instagram()
         except KeyError as ex:
             logging.exception(f"For video {self._video_title}, downloading failed: {str(ex)}\n'{self._video_title}' will not upload")
-            
+
 
 def do_search(driver: webdriver.Chrome) -> list:
-    videos = []
-    for ele in driver.find_elements_by_id('video-title')[:3]:
-        videos.append((ele.text, str(ele.get_attribute('href')).split('=')[1]))
-    return videos
+    """Get the video title, ID, and lenght in minutes of the
+        three latest videos from Klavan.
+
+    Args:
+        driver (webdriver.Chrome): chrome driver
+
+    Returns:
+        list: 3 tuples of latest videos info
+                (example item: ("LOL: CNN's Chris Cuomo PRAISES Biden For the Most BIZARRE Reason", 'nTOWt4COAnM', 7))
+    """
+    v_info = driver.find_elements_by_id('video-title')[:3]
+    video_lenghts = [i for i in driver.find_elements_by_tag_name('span') if str(i.get_attribute('class')) == 'style-scope ytd-thumbnail-overlay-time-status-renderer'][:3]
+    return [(v_info[i].text, str(v_info[i].get_attribute('href')).split('=')[1], int(video_lenghts[i].text.split(':')[0])) for i in range(3)]
 
 
 def loop() -> None:
     global CHROME_OPTIONS
     global LINK
+
+    max_video_lenght = 30 # in minutes, this sets the max lenght a video can be to be uploaded
 
     while (True):
         try:
@@ -120,14 +124,23 @@ def loop() -> None:
 
         uploaded_videos = [i[0] for i in reader(open('uploaded_videos.csv', 'r'))]
         video_search = do_search(driver=driver)
-        
+
         new_videos = False
         new_videos_to_do = []
 
         for item in video_search:
-            if item[1] not in uploaded_videos:
-                new_videos = True
-                new_videos_to_do.append(item)
+            if item[1] not in uploaded_videos: # item[1] is the video id (str)
+                if item[2] <= max_video_lenght: # item[2] is the video lenght
+                    new_videos = True
+                    new_videos_to_do.append(item)
+                else:
+                    # add video to the uploaded list because
+                    # the video is too long for upload
+                    logging.info(f'The video {item[0]} is not being uploaded because it is too long with' \
+                        + f' the lenght being {item[2]} minutes and the max being {max_video_lenght} minutes')
+                    with open('uploaded_videos.csv', 'a') as uploaded_vids:
+                        uploaded_vids.write(item[1] + '\n')
+
 
         if new_videos:
             for video in new_videos_to_do:
@@ -146,7 +159,7 @@ def loop() -> None:
 
 
 def main():
-    today = datetime.today() - timedelta(hours=4)
+    today = datetime.today()
     date = today.strftime('%m/%d/%Y')
     time = today.strftime('%I:%M%p')
     subject = 'Klavan Bot | Server Starting'

@@ -21,13 +21,10 @@ class Bot(object):
         self.driver = webdriver.Chrome('chromedriver', options=chrome_options)
         self.video_path = video_path
         self.video_title = video_title
-        self.video_desc = video_desc
+        self.video_desc = video_desc + "\n\n#theandrewklavanshow #andrewklavan #andrewklavanshow"
         self.video_id = video_id
 
         self.too_many_upload_attempts = False
-
-        # temp success flag
-        self.success = False
 
         self.start_upload()
 
@@ -85,8 +82,6 @@ class Bot(object):
             # remove from failed uploads if successfully uploaded video
             if self.video_id in FAILED_UPLOADS.keys():
                 FAILED_UPLOADS.pop(self.video_id)
-
-            self.success = True
 
             logging.info(f"Successfully uploaded video '{self.video_title}' ({self.video_id})!")
         except Exception as ex:
