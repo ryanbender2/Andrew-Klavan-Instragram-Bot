@@ -2,11 +2,14 @@
 """This module contains all non-cipher related data extraction logic."""
 import json
 import logging
+import urllib.parse
 import re
 from collections import OrderedDict
+from datetime import datetime
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Tuple
 from urllib.parse import parse_qs
 from urllib.parse import parse_qsl
@@ -15,9 +18,70 @@ from urllib.parse import unquote
 from urllib.parse import urlencode
 
 from pytube.cipher import Cipher
+from pytube.exceptions import HTMLParseError
 from pytube.exceptions import LiveStreamError
 from pytube.exceptions import RegexMatchError
 from pytube.helpers import regex_search
+from pytube.metadata import YouTubeMetadata
+from pytube.parser import parse_for_object
+
+logger = logging.getLogger(__name__)
+
+
+def publish_date(watch_html: str):
+    """Extract publish date
+    :param str watch_html:
+        The html contents of the watch page.
+    :rtype: str
+    :returns:
+        Publish date of the video.
+    """
+    try:
+        result = regex_search(
+            r"(?<=itemprop=\"datePublished\" content=\")\d{4}-\d{2}-\d{2}",
+            watch_html, group=0
+        )
+    except RegexMatchError:
+        return None
+    return datetime.strptime(result, '%Y-%m-%d')
+
+
+def recording_available(watch_html):
+    """Check if live stream recording is available.
+
+    :param str watch_html:
+        The html contents of the watch page.
+    :rtype: bool
+    :returns:
+        Whether or not the content is private.
+    """
+    unavailable_strings = [
+        'This live stream recording is not available.'
+    ]
+    for string in unavailable_strings:
+        if string in watch_html:
+            return False
+    return True
+
+
+def is_private(watch_html):
+    """Check if content is private.
+
+    :param str watch_html:
+        The html contents of the watch page.
+    :rtype: bool
+    :returns:
+        Whether or not the content is private.
+    """
+    private_strings = [
+        "This is a private video. Please sign in to verify that you may see it.",
+        "\"simpleText\":\"Private video\"",
+        "This video is private."
+    ]
+    for string in private_strings:
+        if string in watch_html:
+            return True
+    return False
 
 
 def is_age_restricted(watch_html: str) -> bool:
@@ -34,6 +98,58 @@ def is_age_restricted(watch_html: str) -> bool:
     except RegexMatchError:
         return False
     return True
+
+
+def is_region_blocked(watch_html: str) -> bool:
+    """Determine if a video is not available in the user's region.
+
+    :param str watch_html:
+        The html contents of the watch page.
+    :rtype: bool
+    :returns:
+        True if the video is blocked in the users region.
+        False if not, or if unknown.
+    """
+    player_response = initial_player_response(watch_html)
+    country_code_patterns = [
+        r"gl\s*=\s*['\"](\w{2})['\"]",  # gl="US"
+        r"['\"]gl['\"]\s*:\s*['\"](\w{2})['\"]"  # "gl":"US"
+    ]
+    for pattern in country_code_patterns:
+        try:
+            yt_detected_country = regex_search(pattern, watch_html, 1)
+            available_countries = player_response[
+                'microformat']['playerMicroformatRenderer']['availableCountries']
+        except (KeyError, RegexMatchError):
+            pass
+        else:
+            if yt_detected_country not in available_countries:
+                return True
+    return False
+
+
+def playability_status(watch_html: str) -> (str, str):
+    """Return the playability status and status explanation of a video.
+
+    For example, a video may have a status of LOGIN_REQUIRED, and an explanation
+    of "This is a private video. Please sign in to verify that you may see it."
+
+    This explanation is what gets incorporated into the media player overlay.
+
+    :param str watch_html:
+        The html contents of the watch page.
+    :rtype: bool
+    :returns:
+        Playability status and reason of the video.
+    """
+    player_response = initial_player_response(watch_html)
+    status_dict = player_response.get('playabilityStatus', {})
+    if 'status' in status_dict:
+        if 'reason' in status_dict:
+            return status_dict['status'], [status_dict['reason']]
+        if 'messages' in status_dict:
+            return status_dict['status'], status_dict['messages']
+    return None, [None]
 
 
 def video_id(url: str) -> str:
@@ -54,6 +170,24 @@ def video_id(url: str) -> str:
     return regex_search(r"(?:v=|\/)([0-9A-Za-z_-]{11}).*", url, group=1)
 
 
+def playlist_id(url: str) -> str:
+    """Extract the ``playlist_id`` from a YouTube url.
+
+    This function supports the following patterns:
+
+    - :samp:`https://youtube.com/playlist?list={playlist_id}`
+    - :samp:`https://youtube.com/watch?v={video_id}&list={playlist_id}`
+
+    :param str url:
+        A YouTube url containing a playlist id.
+    :rtype: str
+    :returns:
+        YouTube playlist id.
+    """
+    parsed = urllib.parse.urlparse(url)
+    return parse_qs(parsed.query)['list'][0]
+
+
 def video_info_url(video_id: str, watch_url: str) -> str:
     """Construct the video_info url.
 
@@ -69,7 +203,6 @@ def video_info_url(video_id: str, watch_url: str) -> str:
     params = OrderedDict(
         [
             ("video_id", video_id),
-            ("el", "$el"),
             ("ps", "default"),
             ("eurl", quote(watch_url)),
             ("hl", "en_US"),
@@ -116,7 +249,10 @@ def js_url(html: str) -> str:
     :param str html:
         The html contents of the watch page.
     """
-    base_js = get_ytplayer_js(html)
+    try:
+        base_js = get_ytplayer_config(html)['assets']['js']
+    except (KeyError, RegexMatchError):
+        base_js = get_ytplayer_js(html)
     return "https://youtube.com" + base_js
 
 
@@ -157,12 +293,13 @@ def get_ytplayer_js(html: str) -> Any:
         Path to YouTube's base.js file.
     """
     js_url_patterns = [
-        r"\"jsUrl\":\"([^\"]*)\"",
+        r"(/s/player/[\w\d]+/[\w\d_/.]+/base\.js)"
     ]
     for pattern in js_url_patterns:
         regex = re.compile(pattern)
         function_match = regex.search(html)
         if function_match:
+            logger.debug("finished regex search, matched: %s", pattern)
             yt_player_js = function_match.group(1)
             return yt_player_js
 
@@ -184,21 +321,36 @@ def get_ytplayer_config(html: str) -> Any:
     :returns:
         Substring of the html containing the encoded manifest data.
     """
+    logger.debug("finding initial function name")
     config_patterns = [
-        r";ytplayer\.config\s*=\s*({.*?});",
-        r";ytplayer\.config\s*=\s*({.+?});ytplayer",
-        r";yt\.setConfig\(\{'PLAYER_CONFIG':\s*({.*})}\);",
-        r";yt\.setConfig\(\{'PLAYER_CONFIG':\s*({.*})(,'EXPERIMENT_FLAGS'|;)",  # noqa: E501
+        r"ytplayer\.config\s*=\s*",
+        r"ytInitialPlayerResponse\s*=\s*"
     ]
     for pattern in config_patterns:
-        regex = re.compile(pattern)
-        function_match = regex.search(html)
-        if function_match:
-            yt_player_config = function_match.group(1)
-            return json.loads(yt_player_config)
+        # Try each pattern consecutively if they don't find a match
+        try:
+            return parse_for_object(html, pattern)
+        except HTMLParseError as e:
+            logger.debug(f'Pattern failed: {pattern}')
+            logger.debug(e)
+            continue
+
+    # setConfig() needs to be handled a little differently.
+    # We want to parse the entire argument to setConfig()
+    #  and use then load that as json to find PLAYER_CONFIG
+    #  inside of it.
+    setconfig_patterns = [
+        r"yt\.setConfig\(.*['\"]PLAYER_CONFIG['\"]:\s*"
+    ]
+    for pattern in setconfig_patterns:
+        # Try each pattern consecutively if they don't find a match
+        try:
+            return parse_for_object(html, pattern)
+        except HTMLParseError:
+            continue
 
     raise RegexMatchError(
-        caller="get_ytplayer_config", pattern="config_patterns"
+        caller="get_ytplayer_config", pattern="config_patterns, setconfig_patterns"
     )
 
 
@@ -236,10 +388,14 @@ def apply_signature(config_args: Dict, fmt: str, js: str) -> None:
             # For certain videos, YouTube will just provide them pre-signed, in
             # which case there's no real magic to download them and we can skip
             # the whole signature descrambling entirely.
+            logger.debug("signature found, skip decipher")
             continue
 
         signature = cipher.get_signature(ciphered_signature=stream["s"])
 
+        logger.debug(
+            "finished descrambling signature for itag=%s", stream["itag"]
+        )
         # 403 forbidden fix
         stream_manifest[i]["url"] = url + "&sig=" + signature
 
@@ -269,14 +425,15 @@ def apply_descrambler(stream_data: Dict, key: str) -> None:
     if key == "url_encoded_fmt_stream_map" and not stream_data.get(
         "url_encoded_fmt_stream_map"
     ):
-        formats = json.loads(stream_data["player_response"])["streamingData"][
-            "formats"
-        ]
-        formats.extend(
-            json.loads(stream_data["player_response"])["streamingData"][
-                "adaptiveFormats"
-            ]
-        )
+        if isinstance(stream_data["player_response"], str):
+            streaming_data = json.loads(stream_data["player_response"])["streamingData"]
+        else:
+            streaming_data = stream_data["player_response"]["streamingData"]
+        formats = []
+        if 'formats' in streaming_data.keys():
+            formats.extend(streaming_data['formats'])
+        if 'adaptiveFormats' in streaming_data.keys():
+            formats.extend(streaming_data['adaptiveFormats'])
         try:
             stream_data[key] = [
                 {
@@ -316,3 +473,88 @@ def apply_descrambler(stream_data: Dict, key: str) -> None:
             for i in stream_data[key].split(",")
         ]
 
+    logger.debug("applying descrambler")
+
+
+def initial_data(watch_html: str) -> str:
+    """Extract the ytInitialData json from the watch_html page.
+
+    This mostly contains metadata necessary for rendering the page on-load,
+    such as video information, copyright notices, etc.
+
+    @param watch_html: Html of the watch page
+    @return:
+    """
+    patterns = [
+        r"window\[['\"]ytInitialData['\"]]\s*=\s*",
+        r"ytInitialData\s*=\s*"
+    ]
+    for pattern in patterns:
+        try:
+            return parse_for_object(watch_html, pattern)
+        except HTMLParseError:
+            pass
+
+    raise RegexMatchError(caller='initial_data', pattern='initial_data_pattern')
+
+
+def initial_player_response(watch_html: str) -> str:
+    """Extract the ytInitialPlayerResponse json from the watch_html page.
+
+    This mostly contains metadata necessary for rendering the page on-load,
+    such as video information, copyright notices, etc.
+
+    @param watch_html: Html of the watch page
+    @return:
+    """
+    patterns = [
+        r"window\[['\"]ytInitialPlayerResponse['\"]]\s*=\s*",
+        r"ytInitialPlayerResponse\s*=\s*"
+    ]
+    for pattern in patterns:
+        try:
+            return parse_for_object(watch_html, pattern)
+        except HTMLParseError:
+            pass
+
+    raise RegexMatchError(
+        caller='initial_player_response',
+        pattern='initial_player_response_pattern'
+    )
+
+
+def metadata(initial_data) -> Optional[YouTubeMetadata]:
+    """Get the informational metadata for the video.
+
+    e.g.:
+    [
+        {
+            'Song': '강남스타일(Gangnam Style)',
+            'Artist': 'PSY',
+            'Album': 'PSY SIX RULES Pt.1',
+            'Licensed to YouTube by': 'YG Entertainment Inc. [...]'
+        }
+    ]
+
+    :rtype: YouTubeMetadata
+    """
+    try:
+        metadata_rows: List = initial_data["contents"]["twoColumnWatchNextResults"][
+            "results"]["results"]["contents"][1]["videoSecondaryInfoRenderer"][
+            "metadataRowContainer"]["metadataRowContainerRenderer"]["rows"]
+    except (KeyError, IndexError):
+        # If there's an exception accessing this data, it probably doesn't exist.
+        return YouTubeMetadata([])
+
+    # Rows appear to only have "metadataRowRenderer" or "metadataRowHeaderRenderer"
+    #  and we only care about the former, so we filter the others
+    metadata_rows = filter(
+        lambda x: "metadataRowRenderer" in x.keys(),
+        metadata_rows
+    )
+
+    # We then access the metadataRowRenderer key in each element
+    #  and build a metadata object from this new list
+    metadata_rows = [x["metadataRowRenderer"] for x in metadata_rows]
+
+    return YouTubeMetadata(metadata_rows)

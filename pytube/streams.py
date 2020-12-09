@@ -14,6 +14,7 @@ from typing import BinaryIO
 from typing import Dict
 from typing import Optional
 from typing import Tuple
+from urllib.error import HTTPError
 from urllib.parse import parse_qs
 
 from pytube import extract
@@ -153,7 +154,12 @@ class Stream:
             Filesize (in bytes) of the stream.
         """
         if self._filesize is None:
-            self._filesize = request.filesize(self.url)
+            try:
+                self._filesize = request.filesize(self.url)
+            except HTTPError as e:
+                if e.code != 404:
+                    raise
+                self._filesize = request.seq_filesize(self.url)
         return self._filesize
 
     @property
@@ -238,17 +244,33 @@ class Stream:
         )
 
         if skip_existing and self.exists_at_path(file_path):
+            logger.debug("file %s already exists, skipping", file_path)
             self.on_complete(file_path)
             return file_path
 
         bytes_remaining = self.filesize
+        logger.debug(
+            "downloading (%s total bytes) file to %s",
+            self.filesize,
+            file_path,
+        )
 
         with open(file_path, "wb") as fh:
-            for chunk in request.stream(self.url):
-                # reduce the (bytes) remainder by the length of the chunk.
-                bytes_remaining -= len(chunk)
-                # send to the on_progress callback.
-                self.on_progress(chunk, fh, bytes_remaining)
+            try:
+                for chunk in request.stream(self.url):
+                    # reduce the (bytes) remainder by the length of the chunk.
+                    bytes_remaining -= len(chunk)
+                    # send to the on_progress callback.
+                    self.on_progress(chunk, fh, bytes_remaining)
+            except HTTPError as e:
+                if e.code != 404:
+                    raise
+                # Some adaptive streams need to be requested with sequence numbers
+                for chunk in request.seq_stream(self.url):
+                    # reduce the (bytes) remainder by the length of the chunk.
+                    bytes_remaining -= len(chunk)
+                    # send to the on_progress callback.
+                    self.on_progress(chunk, fh, bytes_remaining)
         self.on_complete(file_path)
         return file_path
 
@@ -278,6 +300,9 @@ class Stream:
         :rtype: io.BytesIO buffer
         """
         bytes_remaining = self.filesize
+        logger.info(
+            "downloading (%s total bytes) file to buffer", self.filesize,
+        )
 
         for chunk in request.stream(self.url):
             # reduce the (bytes) remainder by the length of the chunk.
@@ -309,6 +334,7 @@ class Stream:
 
         """
         file_handler.write(chunk)
+        logger.debug("download remaining: %s", bytes_remaining)
         if self._monostate.on_progress:
             self._monostate.on_progress(self, chunk, bytes_remaining)
 
@@ -322,8 +348,10 @@ class Stream:
         :rtype: None
 
         """
+        logger.debug("download finished")
         on_complete = self._monostate.on_complete
         if on_complete:
+            logger.debug("calling on_complete callback %s", on_complete)
             on_complete(self, file_path)
 
     def __repr__(self) -> str:

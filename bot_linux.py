@@ -12,13 +12,13 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import WebDriverException
 
-logging.basicConfig(filename='.\\klavan_bot_logs.log',
+logging.basicConfig(filename='/home/ryan/fileshare/klavan_bot_logs.log',
                     level=logging.INFO,
                     datefmt='%m/%d/%Y %I:%M %p',
                     format='[%(asctime)s %(filename)s %(funcName)s():%(lineno)s] %(levelname)s: %(message)s')
 
 LINK = 'https://www.youtube.com/c/AndrewKlavan/videos'
-EMAIL_PASS = open("C:\\MSI\\email_pass.key", 'r').readline()
+EMAIL_PASS = open("/passcodes/email_pass.key", 'r').readline()
 
 CHROME_OPTIONS = Options()
 CHROME_OPTIONS.add_argument("--headless")
@@ -67,7 +67,7 @@ class VideoHandler(Thread):
     def download_video(self, new_filename: str) -> None:
         logging.info(f'Downloading video from https://www.youtube.com/watch?v={self._video_id} to {new_filename}')
         yt = YouTube('https://www.youtube.com/watch?v=' + self._video_id)
-        filepath = yt.streams.first().download('.\\temp_video_storage\\', new_filename)
+        filepath = yt.streams.first().download('/Andrew-Klavan-Instragram-Bot/temp_video_storage/', new_filename)
         self._video_path = filepath
         self._video_desc = yt.description
 
@@ -87,7 +87,7 @@ class VideoHandler(Thread):
         try:
             self.download_video(self._generated_filename)
             self.upload_to_instagram()
-        except Exception as ex:
+        except KeyError as ex:
             logging.exception(f"For video {self._video_title}, downloading failed: {str(ex)}\n'{self._video_title}' will not upload")
 
 
@@ -115,19 +115,15 @@ def loop() -> None:
 
     while (True):
         try:
-            driver = webdriver.Chrome('chromedriver.exe', options=CHROME_OPTIONS)
+            driver = webdriver.Chrome('chromedriver', options=CHROME_OPTIONS)
             driver.get(LINK)
-            video_search = do_search(driver=driver)
         except WebDriverException as ex:
             logging.exception(f'Web driver could not connect to the internet, trying again in 10 minutes\n{str(ex)}')
             sleep(600)
             continue
-        except IndexError:
-            logging.exception(f'index error occurred while doing video search, trying again in 10 minutes')
-            sleep(600)
-            continue
 
         uploaded_videos = [i[0] for i in reader(open('uploaded_videos.csv', 'r'))]
+        video_search = do_search(driver=driver)
 
         new_videos = False
         new_videos_to_do = []
@@ -145,6 +141,7 @@ def loop() -> None:
                     with open('uploaded_videos.csv', 'a') as uploaded_vids:
                         uploaded_vids.write(item[1] + '\n')
 
+
         if new_videos:
             for video in new_videos_to_do:
                 logging.info(f'New video: {video[0]} ({video[1]})')
@@ -152,7 +149,7 @@ def loop() -> None:
                 new_video = VideoHandler(video[0], video[1])
                 new_video.start()
 
-                sleep(60)
+                sleep(10)
 
             sleep(600) # 600 -> 10 minutes
         else:
@@ -174,7 +171,7 @@ def main():
         try:
             loop()
         except Exception as ex:
-            logging.exception(f'Server failed: {str(ex)}, server restarting...')
+            logging.exception(f'Server failed: {str(ex)}server restarting...')
             sleep(300)
 
 

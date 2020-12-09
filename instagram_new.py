@@ -7,7 +7,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import logging
 from time import sleep
 
-logging.basicConfig(filename='.\\klavan_bot_logs.log',
+logging.basicConfig(filename='/home/ryan/fileshare/klavan_bot_logs.log',
                     level=logging.INFO,
                     datefmt='%m/%d/%Y %I:%M %p',
                     format='[%(asctime)s %(filename)s %(funcName)s():%(lineno)s] %(levelname)s: %(message)s')
@@ -21,7 +21,7 @@ class Bot(object):
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
-        self.driver = webdriver.Chrome('chromedriver.exe', options=chrome_options)
+        self.driver = webdriver.Chrome('chromedriver', options=chrome_options)
         self.video_path = video_path
         self.video_title = video_title
         self.video_desc = video_desc + "\n\n#theandrewklavanshow #andrewklavan #andrewklavanshow"
@@ -132,7 +132,7 @@ class Bot(object):
 
 
     def do_login(self) -> None:
-        with open('C:\\MSI\\insta_creds.key', 'r') as creds_file:
+        with open('/passcodes/insta_creds.key', 'r') as creds_file:
             WebDriverWait(self.driver, 20).until(
                 EC.visibility_of_element_located((By.XPATH, '//*[@id="loginForm"]/div/div[1]/div/label/input'))
             )

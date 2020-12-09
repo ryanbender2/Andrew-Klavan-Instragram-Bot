@@ -12,13 +12,13 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import WebDriverException
 
-logging.basicConfig(filename='.\\klavan_bot_logs.log',
+logging.basicConfig(filename='/home/ryan/fileshare/klavan_bot_logs.log',
                     level=logging.INFO,
                     datefmt='%m/%d/%Y %I:%M %p',
                     format='[%(asctime)s %(filename)s %(funcName)s():%(lineno)s] %(levelname)s: %(message)s')
 
 LINK = 'https://www.youtube.com/c/AndrewKlavan/videos'
-EMAIL_PASS = open("C:\\MSI\\email_pass.key", 'r').readline()
+EMAIL_PASS = open("/passcodes/email_pass.key", 'r').readline()
 
 CHROME_OPTIONS = Options()
 CHROME_OPTIONS.add_argument("--headless")
@@ -67,7 +67,7 @@ class VideoHandler(Thread):
     def download_video(self, new_filename: str) -> None:
         logging.info(f'Downloading video from https://www.youtube.com/watch?v={self._video_id} to {new_filename}')
         yt = YouTube('https://www.youtube.com/watch?v=' + self._video_id)
-        filepath = yt.streams.first().download('.\\temp_video_storage\\', new_filename)
+        filepath = yt.streams.first().download('/Andrew-Klavan-Instragram-Bot/temp_video_storage/', new_filename)
         self._video_path = filepath
         self._video_desc = yt.description
 
@@ -115,7 +115,7 @@ def loop() -> None:
 
     while (True):
         try:
-            driver = webdriver.Chrome('chromedriver.exe', options=CHROME_OPTIONS)
+            driver = webdriver.Chrome('chromedriver', options=CHROME_OPTIONS)
             driver.get(LINK)
             video_search = do_search(driver=driver)
         except WebDriverException as ex:
@@ -152,7 +152,7 @@ def loop() -> None:
                 new_video = VideoHandler(video[0], video[1])
                 new_video.start()
 
-                sleep(60)
+                sleep(120) # 120 -> 2 minutes
 
             sleep(600) # 600 -> 10 minutes
         else:
